@@ -1,10 +1,49 @@
 from src.f1_data import get_race_telemetry, enable_cache, get_circuit_rotation, load_session, get_quali_telemetry, list_rounds, list_sprints
 from src.run_session import run_arcade_replay, launch_insights_menu
 from src.interfaces.qualifying import run_qualifying_replay
-import sys
 from src.cli.race_selection import cli_load
 from src.gui.race_selection import RaceSelectionWindow
+from src.lib.settings import get_settings
 from PySide6.QtWidgets import QApplication
+import atexit
+import os
+import shutil
+import sys
+
+
+def clear_caches():
+  """Remove FastF1 and computed telemetry cache directories on process exit."""
+  paths = set()
+
+  # Include paths from settings if available
+  try:
+    settings = get_settings()
+    cache_location = settings.cache_location
+    computed_location = settings.computed_data_location
+    if cache_location:
+      paths.add(cache_location)
+    if computed_location:
+      paths.add(computed_location)
+  except Exception:
+    # If settings cannot be loaded, fall back to defaults only
+    pass
+
+  # Also cover default folder names used in this project
+  paths.update({".fastf1-cache", "computed_data"})
+
+  for path in paths:
+    if not path:
+      continue
+    try:
+      if os.path.isdir(path):
+        shutil.rmtree(path, ignore_errors=True)
+    except Exception:
+      # Cache cleanup should never crash the app
+      continue
+
+
+atexit.register(clear_caches)
+
 
 def main(year=None, round_number=None, playback_speed=1, session_type='R', visible_hud=True, ready_file=None, show_telemetry_viewer=True):
   print(f"Loading F1 {year} Round {round_number} Session '{session_type}'")
